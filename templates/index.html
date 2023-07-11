@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Research Paper Collaboration</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #chat {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 45px 45px 20px 160px;
+            height: 400px;
+            overflow-y: scroll;
+            width: 75%;
+            background: #00d0ff36;
+        }
+
+        #name-section {
+            margin: 20px 100px 10px 420px;
+        }
+
+        #message-section {
+            margin: 20px 100px 10px 420px;
+        }
+
+        #name-input,
+        #message-input,
+        #file-input {
+            padding: 5px;
+            margin-right: 5px;
+        }
+
+        #name-button,
+        #send-button,
+        #file-button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        #name-button:hover,
+        #send-button:hover,
+        #file-button:hover {
+            background-color: #45a049;
+        }
+
+        h5 {
+            width: fit-content;
+            padding: 10px;
+            background: #00b8ffbf;
+            border-radius: 10px
+        }
+
+        .info-message {
+            font-weight: bold;
+            background: none;
+        }
+
+        .logo {
+            height: 50px;
+            width: 50px;
+            margin: 25px 460px 25px 25px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            height: 100px;
+        }
+
+        h1 {
+            display: flex;
+            font-size: 70px;
+            font-weight: 600;
+            color: #c6acde;
+            text-shadow: 1px 1px 1px #957dad,
+                1px 2px 1px #957dad,
+                1px 3px 1px #957dad,
+                1px 4px 1px #957dad,
+                1px 5px 1px #957dad,
+                1px 6px 1px #957dad,
+                1px 10px 5px rgba(16, 16, 16, 0.5),
+                1px 15px 10px rgba(16, 16, 16, 0.4),
+                1px 20px 30px rgba(16, 16, 16, 0.3),
+                1px 25px 50px rgba(16, 16, 16, 0.2);
+            margin-right: 270px;
+        }
+
+        .about-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #5bb05e;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .about-link:hover {
+            background-color: #69c46e;
+        }
+
+        /* Custom Styles for Dropdown Menu */
+        .dropdown {
+            display: inline-block;
+            position: relative;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .dropdown:hover {
+            background-color: #45a049;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .confirmation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .confirmation-box {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .confirmation-box h3 {
+            margin-top: 0;
+        }
+
+        .confirmation-buttons {
+            margin-top: 20px;
+        }
+
+        .confirmation-buttons button {
+            padding: 5px 10px;
+            margin-right: 10px;
+        }
+
+        #file-url {
+            display: inline-block;
+            font-size: 14px;
+            margin-top: 10px;
+            overflow-wrap: break-word;
+        }
+
+        .camera-preview-container {
+            width: 100%;
+            height: auto;
+            max-width: 400px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <img class="logo" src="../static/VITLogo.png" />
+        <h1 align="center">PeerShare</h1>
+        <a class="about-link" href="/about">About</a>
+    </div>
+    <div id="chat"></div>
+
+    <div id="name-section">
+        <input type="text" id="name-input" placeholder="Enter your name...">
+        <button id="name-button">Submit</button>
+    </div>
+
+    <div id="message-section" style="display: none;">
+        <input type="text" id="message-input" placeholder="Type your message...">
+        <button id="send-button">Send</button>
+        <br>
+        <div class="dropdown" id="file-upload-options">
+            <button class="dropdown-btn">Select an option</button>
+            <div class="dropdown-content">
+                <a href="#" value="image">Upload Image</a>
+                <a href="#" value="file">Upload File</a>
+                <a href="#" value="camera">Take Picture</a>
+            </div>
+        </div>
+        <input type="file" id="file-input" style="display: none;">
+        <button id="file-button">Send File</button>
+        <p id="file-warning" style="color: red; display: none;">*max size is 1MB!*</p>
+        <span id="file-url"></span>
+    </div>
+
+    <div class="confirmation-overlay" id="confirmation-overlay">
+        <div class="confirmation-box">
+            <div id="camera-preview-container"></div>
+            <h3>Send the captured image?</h3>
+            <div class="confirmation-buttons">
+                <button id="confirm-send-button">Send</button>
+                <button id="cancel-send-button">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        var socket = io();
+        
+        var userName = '1';
+        var overlayShown = false;
+
+        function appendMessage(message, messageType) {
+            var chat = document.getElementById('chat');
+            var messageElement = document.createElement('h5');
+            messageElement.textContent = message;
+
+            if (messageType === 'info') {
+                messageElement.classList.add('info-message');
+            } else if (messageType === 'user') {
+                messageElement.classList.add('user' + userName + '-message');
+            }
+
+            chat.appendChild(messageElement);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function sendMessage() {
+            var messageInput = document.getElementById('message-input');
+            var message = messageInput.value;
+            if (message) {
+                socket.emit('message', message);
+                messageInput.value = '';
+            }
+        }
+
+        function sendFile(option) {
+            var fileInput = document.getElementById('file-input');
+
+            if (option === 'image') {
+                fileInput.accept = 'image/*';
+            } else if (option === 'file') {
+                fileInput.accept = '.txt,.pdf,.doc,.docx';
+            }
+
+            if (option === 'camera') {
+                // Capture image from camera
+                if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(function (stream) {
+                            var video = document.createElement('video');
+                            var canvas = document.createElement('canvas');
+                            var context = canvas.getContext('2d');
+                            video.srcObject = stream;
+                            video.play();
+                            video.onloadedmetadata = function () {
+                                canvas.width = video.videoWidth;
+                                canvas.height = video.videoHeight;
+                                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                captureImageData = canvas.toDataURL();
+                                video.pause();
+                                video.srcObject = null;
+                                stream.getTracks()[0].stop();
+                                showConfirmationOverlay();
+                            };
+                        })
+                        .catch(function (error) {
+                            console.log('Camera access error:', error);
+                        });
+                } else {
+                    appendMessage('Camera access is not supported in this browser.', 'info');
+                }
+                return;
+            }
+
+            fileInput.click();
+        }
+
+        // function showConfirmationOverlay() {
+        //     var confirmationOverlay = document.getElementById('confirmation-overlay');
+        //     confirmationOverlay.style.display = 'flex';
+        // }
+
+        function showConfirmationOverlay() {
+            overlayShown = true;
+            if (overlayShown) { // Only show the overlay if it hasn't been shown before
+                var confirmationOverlay = document.getElementById('confirmation-overlay');
+                var videoElement = document.createElement('video');
+                videoElement.classList.add('camera-preview');
+                videoElement.srcObject = null; // Clear any previous video feed
+                videoElement.autoplay = true;
+
+                if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(function (stream) {
+                            videoElement.srcObject = stream;
+                        })
+                        .catch(function (error) {
+                            console.log('Camera access error:', error);
+                        });
+                } else {
+                    appendMessage('Camera access is not supported in this browser.', 'info');
+                }
+
+                var confirmationBox = document.querySelector('.confirmation-box');
+                confirmationBox.insertBefore(videoElement, confirmationBox.firstChild);
+                confirmationOverlay.style.display = 'flex';
+            }
+        }
+
+
+        // function hideConfirmationOverlay() {
+        //     var confirmationOverlay = document.getElementById('confirmation-overlay');
+        //     confirmationOverlay.style.display = 'none';
+        // }
+
+        function hideConfirmationOverlay() {
+            var confirmationOverlay = document.getElementById('confirmation-overlay');
+            var cameraPreviewContainer = document.getElementById('camera-preview-container');
+            if (cameraPreviewContainer) {
+                cameraPreviewContainer.innerHTML = '';
+            }
+            confirmationOverlay.style.display = 'none';
+            stopCamera(); // Stop the camera feed
+            overlayShown = false;
+        }
+
+
+        function handleConfirmationSend() {
+            if (captureImageData) {
+                socket.emit('message', {
+                    type: 'file',
+                    name: 'camera_snapshot.png',
+                    content: captureImageData,
+                });
+                captureImageData = null;
+                stopCamera();
+                hideConfirmationOverlay();
+            }
+        }
+
+        function stopCamera() {
+            if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function (stream) {
+                        stream.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
+                    })
+                    .catch(function (error) {
+                        console.log('Camera access error:', error);
+                    });
+            }
+        }
+
+        // function handleConfirmationCancel() {
+        //     captureImageData = null;
+        //     hideConfirmationOverlay();
+        // }
+
+        function handleConfirmationCancel() {
+            var confirmationOverlay = document.getElementById('confirmation-overlay');
+            var videoElement = document.querySelector('.camera-preview');
+            if (videoElement && videoElement.srcObject) {
+                videoElement.srcObject.getTracks().forEach(function (track) {
+                    track.stop();
+                });
+            }
+            confirmationOverlay.style.display = 'none';
+        }
+
+
+        function handleNameSubmit() {
+            var nameInput = document.getElementById('name-input');
+            var name = nameInput.value;
+            if (name) {
+                userName = name;
+                socket.emit('name', name);
+                nameInput.value = '';
+                var nameSection = document.getElementById('name-section');
+                nameSection.style.display = 'none';
+                var messageSection = document.getElementById('message-section');
+                messageSection.style.display = 'block';
+            }
+        }
+
+        socket.on('connect', function () {
+            appendMessage('Connected to the server', 'info');
+        });
+
+        socket.on('message', function (message) {
+            appendMessage(message.content, message.type);
+        });
+
+        socket.on('file', function (data) {
+            var senderName = data.sender_name;
+            var fileName = data.file_name;
+            var fileContent = data.file_content;
+            var linkElement = document.createElement('a');
+            linkElement.href = fileContent;
+            linkElement.download = fileName;
+            linkElement.textContent = fileName;
+            var chat = document.getElementById('chat');
+            chat.appendChild(linkElement);
+            appendMessage(senderName + ' sent a file: ' + fileName, 'info');
+        });
+
+        document.getElementById('send-button').addEventListener('click', sendMessage);
+        document.getElementById('message-input').addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        document.getElementById('file-upload-options').addEventListener('click', function (event) {
+            event.preventDefault();
+            var option = event.target.getAttribute('value');
+            if (option) {
+                sendFile(option);
+            }
+        });
+
+        document.getElementById('file-input').addEventListener('change', function (event) {
+            var file = event.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function (event) {
+                    var fileContent = event.target.result;
+                    var fileName = file.name;
+                    socket.emit('message', {
+                        type: 'file',
+                        name: fileName,
+                        content: fileContent,
+                    });
+                };
+                reader.readAsDataURL(file);
+                event.target.value = '';
+                var fileWarning = document.getElementById('file-warning');
+                fileWarning.style.display = 'none';
+
+                var fileUrl = document.getElementById('file-url');
+                fileUrl.textContent = 'Selected File: ' + file.name;
+            }
+        });
+
+        document.getElementById('name-button').addEventListener('click', handleNameSubmit);
+        document.getElementById('name-input').addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                handleNameSubmit();
+            }
+        });
+
+        // Confirmation Overlay Event Listeners
+        document.getElementById('confirm-send-button').addEventListener('click', handleConfirmationSend);
+        document.getElementById('cancel-send-button').addEventListener('click', handleConfirmationCancel);
+    </script>
+</body>
+
+</html>
